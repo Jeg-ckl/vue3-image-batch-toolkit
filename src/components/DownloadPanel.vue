@@ -28,9 +28,9 @@
           <span class="font-medium">{{ formatFileSize(totalProcessedSize) }}</span>
         </div>
         <div class="flex justify-between text-sm">
-          <span>节约空间</span>
-          <span class="font-medium text-green-600">
-            {{ formatFileSize(totalOriginalSize - totalProcessedSize) }} ({{ savedPercent }}%)
+          <span>{{ totalOriginalSize > totalProcessedSize ? '节约空间' : '空间增大' }}</span>
+          <span :class="['font-medium', totalOriginalSize > totalProcessedSize ? 'text-green-600' : 'text-orange-600']">
+            {{ formatFileSize(Math.abs(totalOriginalSize - totalProcessedSize)) }} ({{ savedPercent }}%)
           </span>
         </div>
       </div>

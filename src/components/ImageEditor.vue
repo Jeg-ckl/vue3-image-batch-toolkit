@@ -93,6 +93,9 @@ const canvasContainer = ref(null)
 const watermarkInput = ref(null)
 let canvas = null
 let mainImage = null
+let originalImageWidth = 0
+let originalImageHeight = 0
+let displayScale = 1
 
 const currentCropRatio = ref('free')
 const watermarkText = ref('')
@@ -133,10 +136,12 @@ const initCanvas = () => {
   canvasContainer.value.appendChild(canvasElement)
 
   fabric.Image.fromURL(props.image.url, (img) => {
+    originalImageWidth = img.width
+    originalImageHeight = img.height
     const maxWidth = containerWidth - 40
     const maxHeight = containerHeight - 40
-    const scale = Math.min(maxWidth / img.width, maxHeight / img.height, 1)
-    img.scale(scale)
+    displayScale = Math.min(maxWidth / img.width, maxHeight / img.height, 1)
+    img.scale(displayScale)
     img.set({
       selectable: true
     })
@@ -221,10 +226,43 @@ const applyBorderRadius = () => {
 }
 
 const save = () => {
-  const dataUrl = canvas.toDataURL({
-    format: 'png'
+  const offsetX = mainImage.left
+  const offsetY = mainImage.top
+  const multiplier = 1 / displayScale
+  
+  canvas.getObjects().forEach(obj => {
+    obj.set({
+      left: obj.left - offsetX,
+      top: obj.top - offsetY
+    })
+    obj.setCoords()
   })
-  emit('save', dataUrl)
+  
+  const originalFileType = props.image.file?.type || 'image/jpeg'
+  const isPng = originalFileType === 'image/png'
+  const exportFormat = isPng ? 'png' : 'jpeg'
+  const exportQuality = 0.9
+  
+  const dataUrl = canvas.toDataURL({
+    format: exportFormat,
+    quality: exportQuality,
+    multiplier: multiplier,
+    left: 0,
+    top: 0,
+    width: mainImage.getScaledWidth(),
+    height: mainImage.getScaledHeight()
+  })
+  
+  canvas.getObjects().forEach(obj => {
+    obj.set({
+      left: obj.left + offsetX,
+      top: obj.top + offsetY
+    })
+    obj.setCoords()
+  })
+  canvas.renderAll()
+  
+  emit('save', dataUrl, exportFormat)
 }
 
 const close = () => {
