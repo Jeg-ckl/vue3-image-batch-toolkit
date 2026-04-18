@@ -49,7 +49,13 @@ export async function compressImage(file, quality = 0.8) {
       ctx.drawImage(img, 0, 0, width, height)
 
       canvas.toBlob((blob) => {
-        resolve(new File([blob], file.name, { type: file.type }))
+        const compressedFile = new File([blob], file.name, { type: file.type })
+        // 如果压缩后的文件比原始文件大，返回原始文件
+        if (compressedFile.size > file.size) {
+          resolve(file)
+        } else {
+          resolve(compressedFile)
+        }
       }, file.type, quality)
     }
 

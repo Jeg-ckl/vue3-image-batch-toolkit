@@ -30,7 +30,7 @@
         <div class="flex justify-between text-sm">
           <span>节约空间</span>
           <span class="font-medium text-green-600">
-            {{ formatFileSize(totalOriginalSize - totalProcessedSize) }} ({{ savedPercent }}%)
+            {{ formatFileSize(Math.max(0, totalOriginalSize - totalProcessedSize)) }} ({{ Math.max(0, savedPercent) }}%)
           </span>
         </div>
       </div>
