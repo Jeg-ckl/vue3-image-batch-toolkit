@@ -96,20 +96,35 @@ const openEditor = (img) => {
 }
 
 const handleEditorSave = async (dataUrl) => {
-  const response = await fetch(dataUrl)
-  const blob = await response.blob()
-  const file = new File([blob], currentEditImage.value.name, { type: 'image/png' })
-  const dimensions = await getImageDimensions(file)
+  if (!dataUrl || !dataUrl.startsWith('data:')) {
+    showEditor.value = false
+    return
+  }
   
-  const img = images.value.find(i => i.id === currentEditImage.value.id)
-  if (img) {
-    img.processed = {
-      file,
-      url: dataUrl,
-      size: file.size,
-      width: dimensions.width,
-      height: dimensions.height
+  try {
+    const response = await fetch(dataUrl)
+    const blob = await response.blob()
+    
+    if (!blob || blob.size === 0) {
+      showEditor.value = false
+      return
     }
+    
+    const file = new File([blob], currentEditImage.value.name.replace(/\.[^/.]+$/, '.png'), { type: 'image/png' })
+    const dimensions = await getImageDimensions(file)
+    
+    const img = images.value.find(i => i.id === currentEditImage.value.id)
+    if (img) {
+      img.processed = {
+        file,
+        url: dataUrl,
+        size: file.size,
+        width: dimensions.width,
+        height: dimensions.height
+      }
+    }
+  } catch (error) {
+    console.error('Failed to save edited image:', error)
   }
   showEditor.value = false
 }

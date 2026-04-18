@@ -93,6 +93,9 @@ const canvasContainer = ref(null)
 const watermarkInput = ref(null)
 let canvas = null
 let mainImage = null
+let originalWidth = 0
+let originalHeight = 0
+let displayScale = 1
 
 const currentCropRatio = ref('free')
 const watermarkText = ref('')
@@ -133,10 +136,12 @@ const initCanvas = () => {
   canvasContainer.value.appendChild(canvasElement)
 
   fabric.Image.fromURL(props.image.url, (img) => {
+    originalWidth = img.width
+    originalHeight = img.height
     const maxWidth = containerWidth - 40
     const maxHeight = containerHeight - 40
-    const scale = Math.min(maxWidth / img.width, maxHeight / img.height, 1)
-    img.scale(scale)
+    displayScale = Math.min(maxWidth / img.width, maxHeight / img.height, 1)
+    img.scale(displayScale)
     img.set({
       selectable: true
     })
@@ -221,9 +226,57 @@ const applyBorderRadius = () => {
 }
 
 const save = () => {
-  const dataUrl = canvas.toDataURL({
-    format: 'png'
+  if (!mainImage) {
+    emit('close')
+    return
+  }
+  
+  const exportCanvas = document.createElement('canvas')
+  exportCanvas.width = originalWidth
+  exportCanvas.height = originalHeight
+  const exportCtx = exportCanvas.getContext('2d')
+  
+  const exportScale = 1 / displayScale
+  
+  const objects = canvas.getObjects()
+  
+  objects.forEach(obj => {
+    const scaledLeft = obj.left * exportScale
+    const scaledTop = obj.top * exportScale
+    
+    exportCtx.save()
+    exportCtx.translate(scaledLeft, scaledTop)
+    exportCtx.rotate(obj.angle * Math.PI / 180)
+    
+    if (obj.flipX) exportCtx.scale(-1, 1)
+    if (obj.flipY) exportCtx.scale(1, -1)
+    
+    if (obj.type === 'image') {
+      const imgElement = obj._element
+      if (imgElement) {
+        const imgWidth = obj.width * obj.scaleX * exportScale
+        const imgHeight = obj.height * obj.scaleY * exportScale
+        if (obj === mainImage) {
+          exportCtx.globalAlpha = obj.opacity || 1
+          exportCtx.drawImage(imgElement, -imgWidth / 2, -imgHeight / 2, imgWidth, imgHeight)
+        } else {
+          exportCtx.globalAlpha = obj.opacity || 1
+          exportCtx.drawImage(imgElement, -imgWidth / 2, -imgHeight / 2, imgWidth, imgHeight)
+        }
+      }
+    } else if (obj.type === 'text' || obj.type === 'i-text' || obj.type === 'textbox') {
+      const fontSize = (obj.fontSize || 30) * exportScale
+      exportCtx.font = `${obj.fontWeight || 'normal'} ${fontSize}px ${obj.fontFamily || 'Arial'}`
+      exportCtx.fillStyle = obj.fill || 'rgba(0,0,0,0.5)'
+      exportCtx.textAlign = 'center'
+      exportCtx.textBaseline = 'middle'
+      exportCtx.fillText(obj.text, 0, 0)
+    }
+    
+    exportCtx.restore()
   })
+  
+  const dataUrl = exportCanvas.toDataURL('image/png')
   emit('save', dataUrl)
 }
 
