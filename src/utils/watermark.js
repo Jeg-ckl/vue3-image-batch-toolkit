@@ -20,9 +20,18 @@ export function addTextWatermark(file, text, options = {}) {
       ctx.font = `${fontSize}px Arial`
       ctx.fillStyle = color
       ctx.fillText(text, x, y)
+      const outputType = file.type || 'image/jpeg'
       canvas.toBlob((blob) => {
-        resolve(new File([blob], file.name, { type: file.type }))
-      }, file.type)
+        if (!blob) {
+          resolve(file)
+          return
+        }
+        resolve(new File([blob], file.name, { type: outputType }))
+      }, outputType)
+    }
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      resolve(file)
     }
     img.src = url
   })
@@ -44,12 +53,17 @@ export function addImageWatermark(file, watermarkFile, options = {}) {
     const mainUrl = URL.createObjectURL(file)
     const watermarkUrl = URL.createObjectURL(watermarkFile)
     let loadedCount = 0
+    let hasError = false
+
+    const cleanup = () => {
+      URL.revokeObjectURL(mainUrl)
+      URL.revokeObjectURL(watermarkUrl)
+    }
 
     const checkLoaded = () => {
       loadedCount++
       if (loadedCount === 2) {
-        URL.revokeObjectURL(mainUrl)
-        URL.revokeObjectURL(watermarkUrl)
+        cleanup()
         canvas.width = mainImg.width
         canvas.height = mainImg.height
         ctx.drawImage(mainImg, 0, 0)
@@ -58,14 +72,29 @@ export function addImageWatermark(file, watermarkFile, options = {}) {
         const h = watermarkImg.height * scale
         ctx.drawImage(watermarkImg, x, y, w, h)
         ctx.globalAlpha = 1
+        const outputType = file.type || 'image/jpeg'
         canvas.toBlob((blob) => {
-          resolve(new File([blob], file.name, { type: file.type }))
-        }, file.type)
+          if (!blob) {
+            resolve(file)
+            return
+          }
+          resolve(new File([blob], file.name, { type: outputType }))
+        }, outputType)
+      }
+    }
+
+    const handleError = () => {
+      if (!hasError) {
+        hasError = true
+        cleanup()
+        resolve(file)
       }
     }
 
     mainImg.onload = checkLoaded
     watermarkImg.onload = checkLoaded
+    mainImg.onerror = handleError
+    watermarkImg.onerror = handleError
     mainImg.src = mainUrl
     watermarkImg.src = watermarkUrl
   })

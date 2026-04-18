@@ -48,9 +48,21 @@ export async function compressImage(file, quality = 0.8) {
       canvas.height = height
       ctx.drawImage(img, 0, 0, width, height)
 
+      const outputType = file.type === 'image/png' ? 'image/jpeg' : file.type || 'image/jpeg'
+      
       canvas.toBlob((blob) => {
-        resolve(new File([blob], file.name, { type: file.type }))
-      }, file.type, quality)
+        if (!blob) {
+          resolve(file)
+          return
+        }
+        const compressedFile = new File([blob], file.name.replace(/\.png$/i, '.jpg'), { type: outputType })
+        resolve(compressedFile)
+      }, outputType, quality)
+    }
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      resolve(file)
     }
 
     img.src = url
@@ -76,9 +88,18 @@ export function rotateImage(file, degrees) {
       ctx.translate(canvas.width / 2, canvas.height / 2)
       ctx.rotate((degrees * Math.PI) / 180)
       ctx.drawImage(img, -img.width / 2, -img.height / 2)
+      const outputType = file.type || 'image/jpeg'
       canvas.toBlob((blob) => {
-        resolve(new File([blob], file.name, { type: file.type }))
-      }, file.type)
+        if (!blob) {
+          resolve(file)
+          return
+        }
+        resolve(new File([blob], file.name, { type: outputType }))
+      }, outputType)
+    }
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      resolve(file)
     }
     img.src = url
   })
@@ -98,9 +119,17 @@ export function convertImageFormat(file, format) {
       canvas.height = img.height
       ctx.drawImage(img, 0, 0)
       canvas.toBlob((blob) => {
+        if (!blob) {
+          resolve(file)
+          return
+        }
         const newName = file.name.replace(/\.[^/.]+$/, `.${format}`)
         resolve(new File([blob], newName, { type: mimeType }))
       }, mimeType)
+    }
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      resolve(file)
     }
     img.src = url
   })
