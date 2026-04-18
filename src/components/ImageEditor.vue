@@ -93,6 +93,7 @@ const canvasContainer = ref(null)
 const watermarkInput = ref(null)
 let canvas = null
 let mainImage = null
+let originalDimensions = { width: 0, height: 0 }
 
 const currentCropRatio = ref('free')
 const watermarkText = ref('')
@@ -133,6 +134,8 @@ const initCanvas = () => {
   canvasContainer.value.appendChild(canvasElement)
 
   fabric.Image.fromURL(props.image.url, (img) => {
+    // 保存原始图片尺寸
+    originalDimensions = { width: img.width, height: img.height }
     const maxWidth = containerWidth - 40
     const maxHeight = containerHeight - 40
     const scale = Math.min(maxWidth / img.width, maxHeight / img.height, 1)
@@ -221,9 +224,35 @@ const applyBorderRadius = () => {
 }
 
 const save = () => {
+  if (!canvas || !mainImage) {
+    emit('close')
+    return
+  }
+
+  // 计算导出尺寸（考虑旋转）
+  const angle = mainImage.angle || 0
+  const isRotated90or270 = Math.abs(angle % 180) === 90
+
+  let exportWidth, exportHeight
+  if (isRotated90or270) {
+    exportWidth = originalDimensions.height
+    exportHeight = originalDimensions.width
+  } else {
+    exportWidth = originalDimensions.width
+    exportHeight = originalDimensions.height
+  }
+
+  // 计算缩放比例
+  const scaleMultiplier = exportWidth / mainImage.getScaledWidth()
+
+  // 使用fabric.js的toDataURL方法导出
   const dataUrl = canvas.toDataURL({
-    format: 'png'
+    format: 'png',
+    multiplier: scaleMultiplier,
+    width: exportWidth,
+    height: exportHeight
   })
+
   emit('save', dataUrl)
 }
 

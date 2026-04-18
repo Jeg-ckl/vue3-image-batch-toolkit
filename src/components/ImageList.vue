@@ -15,8 +15,8 @@
         <div class="p-3">
           <p class="text-sm font-medium text-gray-800 truncate">{{ img.name }}</p>
           <p class="text-xs text-gray-500 mt-1">{{ formatFileSize(img.size) }} · {{ img.width }}×{{ img.height }}</p>
-          <div v-if="img.processed" class="text-xs text-green-600 mt-1">
-            已处理 (节约: {{ formatFileSize(img.size - img.processed.size) }})
+          <div v-if="img.processed && typeof img.processed.size === 'number'" class="text-xs text-green-600 mt-1">
+            已处理 (节约: {{ formatFileSize(Math.max(0, img.size - img.processed.size)) }})
           </div>
         </div>
         <div class="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
