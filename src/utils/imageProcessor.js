@@ -2,8 +2,10 @@ export function formatFileSize(bytes) {
   if (bytes === 0) return '0 Bytes'
   const k = 1024
   const sizes = ['Bytes', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+  const absBytes = Math.abs(bytes)
+  const i = Math.floor(Math.log(absBytes) / Math.log(k))
+  const sign = bytes < 0 ? '-' : ''
+  return sign + parseFloat((absBytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
 export function getImageDimensions(file) {
@@ -48,9 +50,16 @@ export async function compressImage(file, quality = 0.8) {
       canvas.height = height
       ctx.drawImage(img, 0, 0, width, height)
 
+      const outputType = file.type === 'image/png' ? 'image/jpeg' : file.type
+      const outputQuality = file.type === 'image/png' ? 0.92 : quality
+
       canvas.toBlob((blob) => {
-        resolve(new File([blob], file.name, { type: file.type }))
-      }, file.type, quality)
+        if (blob && blob.size < file.size) {
+          resolve(new File([blob], file.name, { type: outputType }))
+        } else {
+          resolve(file)
+        }
+      }, outputType, outputQuality)
     }
 
     img.src = url

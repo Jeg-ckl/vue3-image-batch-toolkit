@@ -95,10 +95,26 @@ const openEditor = (img) => {
   showEditor.value = true
 }
 
-const handleEditorSave = async (dataUrl) => {
+const handleEditorSave = async (dataUrl, format = 'jpeg') => {
+  const mimeType = format === 'png' ? 'image/png' : 'image/jpeg'
   const response = await fetch(dataUrl)
   const blob = await response.blob()
-  const file = new File([blob], currentEditImage.value.name, { type: 'image/png' })
+  
+  let finalBlob = blob
+  if (blob.size > currentEditImage.value.size && format === 'jpeg') {
+    const canvas = document.createElement('canvas')
+    const img = new Image()
+    img.src = dataUrl
+    await new Promise(resolve => { img.onload = resolve })
+    canvas.width = img.width
+    canvas.height = img.height
+    canvas.getContext('2d').drawImage(img, 0, 0)
+    finalBlob = await new Promise(resolve => {
+      canvas.toBlob(resolve, 'image/jpeg', 0.85)
+    })
+  }
+  
+  const file = new File([finalBlob], currentEditImage.value.name, { type: mimeType })
   const dimensions = await getImageDimensions(file)
   
   const img = images.value.find(i => i.id === currentEditImage.value.id)
